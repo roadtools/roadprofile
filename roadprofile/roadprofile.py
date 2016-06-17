@@ -22,17 +22,26 @@ def iter_intervals(x, length):
         if len(x) <= max_idx:
             max_idx = len(x)
 
-def calculate_mpd(x, y):
+def calculate_mpd(x, y, nmean=10, seglen=0.1):
     mpd_list = []
-    for start, end in iter_intervals(x, 0.1):
+    x_list = []
+
+    check = nmean - 1
+    msd = np.zeros((nmean,))
+    x_list.append(x[0])
+    for n, (start, end) in enumerate(iter_intervals(x, seglen)):
         xsub = x[start:end]
         ysub = y[start:end]
         ysub = ysub - np.polyval(np.polyfit(xsub, ysub, 1), xsub)
-        mpd = np.mean(_calculate_msd(xsub, ysub))
-        mpd_list.append(mpd)
-    return np.array(mpd_list)
+        msd_tmp = np.mean(_calculate_msd(xsub, ysub))
+        idx = n % nmean
+        msd[idx] = msd_tmp
+        if idx == check:
+            x_list.append(xsub[-1])
+            mpd_list.append(np.mean(msd))
+    return np.array(x_list), np.array(mpd_list)
 
-def envelope_profile_meyer(z, d=0, maxiter=100):
+def envelope_profile(z, d=0, maxiter=100):
     z = z.copy()
     if d == 0: return z
     C = 0

@@ -108,11 +108,40 @@ class TestMPDAlgorithm(unittest.TestCase):
         y = np.array([0, 0, 1, 0, 2])
         self.assertEqual((0, 2), _calculate_msd(x ,y))
 
-    def test_calculate_mpd(self):
+    def test_calculate_mpd_1msd(self):
         x = np.array([0, 0.025, 0.075, 0.1])
         y = np.array([2, -2, -2, 2])
-        mpd_out = calculate_mpd(x, y)
+        x_out, mpd_out = calculate_mpd(x, y, nmean=1)
         npt.assert_array_almost_equal(np.array([2]), mpd_out)
+        npt.assert_array_almost_equal(np.array([0, 0.1]), x_out)
+
+    def test_calculate_mpd_10msd(self):
+        all_x = []
+        x_sub = np.array([0, 0.025, 0.075, 0.1])
+        x_out_expect = [x_sub[0]]
+        for n in range(10):
+            all_x.append(x_sub + n * 0.11)
+            if n==9:
+                x_out_expect.append(all_x[-1][-1])
+        x = np.array(all_x).flatten()
+        y = np.array([2, -2, -2, 2] * 10)
+        x_out, mpd_out = calculate_mpd(x, y)
+        npt.assert_array_almost_equal(np.array([2]), mpd_out)
+        npt.assert_array_almost_equal(x_out_expect, x_out)
+
+    def test_calculate_mpd_20msd(self):
+        all_x = []
+        x_sub = np.array([0, 0.025, 0.075, 0.1])
+        x_out_expect = [x_sub[0]]
+        for n in range(20):
+            all_x.append(x_sub + n * 0.11)
+            if n==9 or n==19:
+                x_out_expect.append(all_x[-1][-1])
+        x = np.array(all_x).flatten()
+        y = np.array([2, -2, -2, 2] * 20)
+        x_out, mpd_out = calculate_mpd(x, y)
+        npt.assert_array_almost_equal(np.array([2, 2]), mpd_out)
+        npt.assert_array_almost_equal(x_out_expect, x_out)
 
 if __name__ == '__main__':
     unittest.main()
