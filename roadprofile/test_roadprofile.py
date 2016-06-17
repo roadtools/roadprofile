@@ -16,26 +16,31 @@ class TestCreateDropoutsIndex(unittest.TestCase):
         self.insert_invalids(x, y, invalid_intervals)
         drop_outs = _create_dropouts_index(y, self.dropout_criteria)
         for start, end in _iter_dropout_intervals(drop_outs):
-            self.assertTrue(all(y[start:end] == self.dropout_criteria))
+            boollist = list(y[start:end] == self.dropout_criteria)
+            self.assertListEqual(boollist, [True]*len(boollist))
 
     def test_single_point(self):
         self.execute_testprocedure({(2,3)})
 
-    def test_two_single_points(self):
-        self.execute_testprocedure({
-            (2,2), (4,4)})
+    def test_two_single_points_one_point_apart(self):
+        self.execute_testprocedure([
+            (2,3), (4,5)])
 
     def test_two_consecutive_points(self):
         self.execute_testprocedure({
-            (2,3)})
+            (2,4)})
 
     def test_three_consecutive_points(self):
         self.execute_testprocedure({
-            (2,4)})
+            (2,5)})
+
+    def test_two_consec_and_one_single(self):
+        self.execute_testprocedure({
+            (2,5), (7,8)})
 
     def test_two_consecutive_beginning(self):
             self.execute_testprocedure({
-                (0,2)})
+                (0,3)})
 
     def test_single_point_beginning(self):
             self.execute_testprocedure({

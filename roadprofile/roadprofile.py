@@ -6,7 +6,7 @@ def interpolate_dropouts(x, y, dropout_criteria):
     drop_outs = _create_dropouts_index(y, dropout_criteria)
     for start, end in _iter_dropout_intervals(drop_outs):
         y[start:end] = np.polyval(
-                np.polyfit((x[start-1], x[end + 1]), (y[start-1], y[end+1]), 1),
+                np.polyfit((x[start - 1], x[end]), (y[start - 1], y[end]), 1),
                 x[start:end])
 
 def iter_intervals(x, length):
@@ -102,8 +102,8 @@ def _iter_dropout_intervals(drop_outs):
             count += 1
             idx += 1
         else:
-            yield drop_outs[idx], drop_outs[idx + count] + 1
-            idx += count + 1
+            yield drop_outs[idx - count], drop_outs[idx] + 1
+            idx += 1
             count = 0
 
 def _calculate_msd(xsub, ysub):
