@@ -1,7 +1,8 @@
 import unittest
 import numpy as np
 import numpy.testing as npt
-from roadprofile import _create_dropouts_index, _iter_dropout_intervals, interpolate_dropouts, iter_intervals, _calculate_msd, calculate_mpd
+
+from roadprofile import _calculate_msd, calculate_mpd, _create_dropouts_index, _iter_dropout_intervals, iter_intervals, interpolate_dropouts
 
 class TestCreateDropoutsIndex(unittest.TestCase):
     dropout_criteria = 999
