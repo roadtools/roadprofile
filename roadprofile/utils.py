@@ -26,7 +26,7 @@ def interpolate_dropouts(x, y, dropout_criteria):
                 x[start:end])
     return y
 
-def iter_intervals(x, length):
+def iter_intervals(x, length=0.1):
     length = length - _epsilon # dirty fix because, e.g., 0.21 - 0.11 >= 0.1 is False
     last_idx = 0
     max_idx = len(x)

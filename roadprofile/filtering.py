@@ -1,11 +1,21 @@
 from scipy.signal import butter, lfilter
+from numpy import mean, diff
 
-def mpd_highpass(z):
-    order = 2
-    cutoff_frequency = 140 # [mm]
-    a, b = butter(order, 1/cutoff_frequency, btype='highpass')
-    y = lfilter(a, b, z)
-    return y
+def mpd_butterworth(x, y):
+    sampling_rate = mean(diff(x))
+    y = mpd_butterworth_high(y, sampling_rate)
+    return mpd_butterworth_low(y, sampling_rate)
+
+def mpd_butterworth_high(z, sampling_rate):
+    return butterworth(z, 2, 140, sampling_rate, 'highpass')
+
+def mpd_butterworth_low(z, sampling_rate):
+    return butterworth(z, 2, 3, sampling_rate, 'lowpass') # TODO find  cutoff-freq in ISO standard.
+
+def butterworth(z, order, cutoff_frequency, sampling_rate, btype): # sampling rate in [samples/mm]
+    normalized_frequency = 2 / (cutoff_frequency / sampling_rate) # [half-cycles/sample]
+    a, b = butter(order, normalized_frequency, btype='highpass')
+    return lfilter(a, b, z)
 
 def envelope(z, d=0, maxiter=100):
     z = z.copy()
