@@ -1,4 +1,4 @@
-# Routines for Road Profiles
+# Routines for road profile data
 
 This package contains various routines for working with texture profiles. Examples include:
 
