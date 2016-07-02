@@ -18,6 +18,24 @@ def butterworth(z, order, cutoff_frequency, sampling_rate, btype): # sampling ra
     return lfilter(a, b, z)
 
 def envelope(z, d=0, maxiter=100):
+    """
+    Calculate the enveloped profile according to [#f1]_ with corrections from [#f2]_.
+    Intuitively, the algorithm works by imposing an upper limit on the second derivative of the profile, i.e.,
+
+        z'' <= d
+
+    and adjusting the profile to meet this requirement.
+
+    :param z: Longitudinal distance in meters.
+    :param d: Empirical parameter associated with the tyre stifness.
+
+    The current implementation assumes a uniform distance between datapoints.
+
+    .. rubric:: Footnotes
+    .. [#f1] von Meier. A., et. al. The influence of texture and sound absorption on the noise of porous road surfaces, PIARC 2nd International Symposium on Road Surface Characteristics, 1992
+    .. [#f2] http://www.vegvesen.no/_attachment/58581/binary/2256?fast_title=Dr.+Luc+Goubert%3A+Road+surface+texture+and+traffic+noise
+
+    """
     z = z.copy()
     if d == 0: return z
     C = 0
