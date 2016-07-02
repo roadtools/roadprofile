@@ -1,1 +1,5 @@
 __pycache__
+docs/_build
+docs/_build_latex/
+docs/_build_html/
+vim_*
