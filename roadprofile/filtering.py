@@ -1,20 +1,24 @@
 from scipy.signal import butter, lfilter
 from numpy import mean, diff
 
+mpd_butterworth_order = 2
+
 def mpd_butterworth(x, y):
     sampling_rate = mean(diff(x))
     y = mpd_butterworth_high(y, sampling_rate)
     return mpd_butterworth_low(y, sampling_rate)
 
 def mpd_butterworth_high(z, sampling_rate):
-    return butterworth(z, 2, 140, sampling_rate, 'highpass')
+    cutoff_freq = 140
+    return butterworth(z, mpd_butterworth_order, cutoff_freq, sampling_rate, 'highpass')
 
 def mpd_butterworth_low(z, sampling_rate):
-    return butterworth(z, 2, 3, sampling_rate, 'lowpass') # TODO find  cutoff-freq in ISO standard.
+    cutoff_freq = 3
+    return butterworth(z, mpd_butterworth_order, cutoff_freq, sampling_rate, 'lowpass') # TODO find  cutoff-freq in ISO standard.
 
 def butterworth(z, order, cutoff_frequency, sampling_rate, btype): # sampling rate in [samples/mm]
     normalized_frequency = 2 / (cutoff_frequency / sampling_rate) # [half-cycles/sample]
-    a, b = butter(order, normalized_frequency, btype='highpass')
+    a, b = butter(order, normalized_frequency, btype=btype)
     return lfilter(a, b, z)
 
 def envelope(z, d=0, maxiter=100):
@@ -26,10 +30,11 @@ def envelope(z, d=0, maxiter=100):
 
     and adjusting the profile to meet this requirement.
 
-    :param z: Longitudinal distance in meters.
+    :param z: Vertical displacement.
     :param d: Empirical parameter associated with the tyre stifness.
+    :param maxiter: Maximum number of iterations the algorithm performs. This prevents a potential endless loop from occuring.
 
-    The current implementation assumes a uniform distance between datapoints.
+    *Note* The current implementation assumes a uniform distance between datapoints.
 
     .. rubric:: Footnotes
     .. [#f1] von Meier. A., et. al. The influence of texture and sound absorption on the noise of porous road surfaces, PIARC 2nd International Symposium on Road Surface Characteristics, 1992

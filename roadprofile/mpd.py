@@ -39,4 +39,4 @@ def _calculate_msd(xsub, ysub):
     idx = np.where(xsub <= xsub[0] + 0.05)[0][-1] + 1
     msd1 = max(ysub[:idx])
     msd2 = max(ysub[idx:])
-    return mean(msd1, msd2)
+    return mean((msd1, msd2))

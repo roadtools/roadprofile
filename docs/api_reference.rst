@@ -21,4 +21,6 @@ Texture Metrics
 ---------------
 Texture metrics that can be calculated from a texture profile.
 
-    .. autofunction:: calculate_mpd
+.. autofunction:: calculate_mpd
+
+.. autofunction:: calculate_tpa
