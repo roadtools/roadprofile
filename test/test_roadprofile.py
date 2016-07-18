@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 import numpy.testing as npt
 
-from roadprofile import _calculate_msd, calculate_mpd, _create_dropouts_index, _iter_dropout_intervals, iter_intervals, interpolate_dropouts
+from roadprofile import _calculate_msd, calculate_mpd, _calc_tpa_core, _create_dropouts_index, _iter_dropout_intervals, iter_intervals, interpolate_dropouts
 
 class TestCreateDropoutsIndex(unittest.TestCase):
     dropout_criteria = 999
@@ -107,12 +107,12 @@ class TestMPDAlgorithm(unittest.TestCase):
     def test__calculate_msd_include_50mm_point_in_first_interval(self):
         x = np.array([0, 0.025, 0.05, 0.075, 0.1])
         y = np.array([0, 0, 1, 0, 2])
-        self.assertEqual((1, 2), _calculate_msd(x ,y))
+        npt.assert_almost_equal(1.5, _calculate_msd(x ,y))
 
     def test__calculate_msd_include_51mm_point_in_first_interval(self):
         x = np.array([0, 0.025, 0.051, 0.075, 0.1])
         y = np.array([0, 0, 1, 0, 2])
-        self.assertEqual((0, 2), _calculate_msd(x ,y))
+        npt.assert_almost_equal(1, _calculate_msd(x ,y))
 
     def test_calculate_mpd_1msd(self):
         x = np.array([0, 0.025, 0.075, 0.1])
@@ -148,6 +148,32 @@ class TestMPDAlgorithm(unittest.TestCase):
         x_out, mpd_out = calculate_mpd(x, y)
         npt.assert_array_almost_equal(np.array([2, 2]), mpd_out)
         npt.assert_array_almost_equal(x_out_expect, x_out)
+
+class TestTPACoreAlgorithm(unittest.TestCase):
+    y = np.array([0, 1,   0, 1,   0, 1])
+    x = np.array([0, 0.5, 1, 1.5, 2, 2.5])
+    tpa_val = 1.25
+    thresholds = [1, 0.5, 0.75, 0.25]
+
+    def execute_test(self, x, y):
+        for threshold in self.thresholds:
+            npt.assert_almost_equal(_calc_tpa_core(x, y, threshold), self.tpa_val * threshold**2, decimal=2)
+
+    def test_different_thresholds(self):
+        self.execute_test(self.x, self.y)
+
+    def test_negative_profile_values(self):
+        self.execute_test(self.x, self.y - 0.5)
+        self.execute_test(self.x, self.y - 1)
+        self.execute_test(self.x, self.y - 2)
+
+    def test_positive_profile_values(self):
+        self.execute_test(self.x, self.y + 2)
+
+    def test_zero_profile(self):
+        y = np.zeros(self.y.shape)
+        for threshold in self.thresholds:
+            npt.assert_almost_equal(_calc_tpa_core(self.x, y, threshold), 0, decimal=2)
 
 if __name__ == '__main__':
     unittest.main()
