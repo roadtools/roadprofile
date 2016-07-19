@@ -1,17 +1,19 @@
+from functools import partial
 import numpy as np
 from scipy.interpolate import interp1d
 
 from .utils import apply_each_evaluation_length_and_save_result
 
-def calculate_tpa(x, y, nmean=10, seglen=0.1):
+def calculate_tpa(x, y, threshold=50, nmean=10, seglen=0.1):
     """
     Calculate the Texture Penetration Area (TPA) as described in section 4.3 of [#f3]_.
 
 
     :param x: Longitudinal distance in meters.
     :param y: Vertical displacement in milimeters.
-    :param int seglen: Same as :func:`.calculate_mpd`.
-    :param int nmean: Same as :func:`.calculate_mpd`.
+    :param threshold: Percentage of the (upper) profile curve that should be considered as peaks and thus integrated.
+    :param seglen: Same as :func:`.calculate_mpd`.
+    :param nmean: Same as :func:`.calculate_mpd`.
     :return: `(x_interval, tpa)` where
 
         * `x_interval` is an array with length `len(mpd) + 1` of start/end values of the consecutive intervals where TPA have been calculated.
@@ -20,7 +22,8 @@ def calculate_tpa(x, y, nmean=10, seglen=0.1):
     .. rubric:: Footnotes
     .. [#f3] http://forskning.ruc.dk/site/en/publications/id%287ea66167-850c-49ad-95a1-67bd4d8c4957.html
     """
-    x_list, tpa_list = apply_each_evaluation_length_and_save_result(x, y, _calc_tpa_core, nmean, seglen)
+    _calc_tpa_core_fixed_thresh = partial(_calc_tpa_core, threshold=threshold/100)
+    x_list, tpa_list = apply_each_evaluation_length_and_save_result(x, y, _calc_tpa_core_fixed_thresh, nmean, seglen)
     return np.array(x_list), np.array(tpa_list)
 
 def _calc_tpa_core(xsub, ysub, threshold): # threshold refers to fraction of lowest data should be discarded

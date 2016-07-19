@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 import numpy.testing as npt
 
-from roadprofile import _calculate_msd, calculate_mpd, _calc_tpa_core, _create_dropouts_index, _iter_dropout_intervals, iter_intervals, interpolate_dropouts
+from roadprofile import _calculate_msd, calculate_mpd, _calc_tpa_core, _create_dropouts_index, _iter_intervals_of_true, iter_intervals, interpolate_dropouts
 
 class TestCreateDropoutsIndex(unittest.TestCase):
     dropout_criteria = 999
@@ -16,7 +16,7 @@ class TestCreateDropoutsIndex(unittest.TestCase):
         y = np.zeros(x.shape)
         self.insert_invalids(x, y, invalid_intervals)
         drop_outs = _create_dropouts_index(y, self.dropout_criteria)
-        for start, end in _iter_dropout_intervals(drop_outs):
+        for start, end in _iter_intervals_of_true(drop_outs):
             boollist = list(y[start:end] == self.dropout_criteria)
             self.assertListEqual(boollist, [True]*len(boollist))
 
@@ -63,7 +63,7 @@ class TestCreateDropoutsIndexHavingNaN(TestCreateDropoutsIndex):
         y = np.zeros(x.shape)
         self.insert_invalids(x, y, invalid_intervals)
         drop_outs = _create_dropouts_index(y, self.dropout_criteria)
-        for start, end in _iter_dropout_intervals(drop_outs):
+        for start, end in _iter_intervals_of_true(drop_outs):
             self.assertTrue(all(np.isnan(y[start:end])))
 
 class TestInterpolateDropouts(TestCreateDropoutsIndex):

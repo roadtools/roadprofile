@@ -18,14 +18,6 @@ def apply_each_evaluation_length_and_save_result(x, y, func, nmean, seglen):
             result_list.append(np.mean(value_array))
     return x_list, result_list
 
-def interpolate_dropouts(x, y, dropout_criteria):
-    drop_outs = _create_dropouts_index(y, dropout_criteria)
-    for start, end in _iter_dropout_intervals(drop_outs):
-        y[start:end] = np.polyval(
-                np.polyfit((x[start - 1], x[end]), (y[start - 1], y[end]), 1),
-                x[start:end])
-    return y
-
 def iter_intervals(x, length=0.1):
     length = length - _epsilon # dirty fix because, e.g., 0.21 - 0.11 >= 0.1 is False
     last_idx = 0
@@ -39,14 +31,7 @@ def iter_intervals(x, length=0.1):
         if len(x) <= max_idx:
             max_idx = len(x)
 
-def _create_dropouts_index(y, dropout_criteria):
-    if np.isnan(dropout_criteria):
-        drop_outs = np.where(np.isnan(y))[0]
-    else:
-        drop_outs = np.where(y == dropout_criteria)[0]
-    return drop_outs
-
-def _iter_dropout_intervals(drop_outs):
+def _iter_intervals_of_true(drop_outs):
     idx = 0
     count = 0
     while idx < len(drop_outs):

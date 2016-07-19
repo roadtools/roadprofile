@@ -4,7 +4,7 @@
 API reference
 #############
 
-This is the entire list of modules, classes, functions and minor objects used in RDMS.  
+This is the entire list of modules, classes, functions and minor objects used in RoadProfile.
 
 Filtering
 ---------
@@ -14,6 +14,7 @@ Filtering algorithms that can remove interpolate invalid readings, detect outlie
 
 .. automodule:: roadprofile
 
+    .. autofunction:: interpolate_dropouts
     .. autofunction:: envelope
 
 

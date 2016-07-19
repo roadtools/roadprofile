@@ -1,5 +1,7 @@
 from scipy.signal import butter, lfilter
-from numpy import mean, diff
+from numpy import mean, diff, isnan, polyval, polyfit, where
+
+from .utils import _iter_intervals_of_true
 
 mpd_butterworth_order = 2
 
@@ -20,6 +22,32 @@ def butterworth(z, order, cutoff_frequency, sampling_rate, btype): # sampling ra
     normalized_frequency = 2 / (cutoff_frequency / sampling_rate) # [half-cycles/sample]
     a, b = butter(order, normalized_frequency, btype=btype)
     return lfilter(a, b, z)
+
+def _create_dropouts_index(y, dropout_criteria):
+    if isnan(dropout_criteria):
+        drop_outs = where(isnan(y))[0]
+    else:
+        drop_outs = where(y == dropout_criteria)[0]
+    return drop_outs
+
+def interpolate_dropouts(x, y, dropout_criteria):
+    """
+    Replaces all invalid values of `y` with linearly interpolated values based on the neighbouring points (see ISO 13473-1 for more information).
+
+    :param x: Longitudinal distance in meters.
+    :param y: Vertical displacement in milimeters.
+    :param dropout_criteria: Value that defines an invalid measurement in `y`, e.g., `y[n] == dropout_criteria` implies that `y[n]` is invalid.
+        Thus, `dropout_criteria` can be *-9999*, *NaN* or any other special value that indicates an invalid measurement.
+
+    *Note* This algorithm does not create a new array but replaces the invalid measurements in `y`.
+    """
+    drop_outs = _create_dropouts_index(y, dropout_criteria)
+    for start, end in _iter_intervals_of_true(drop_outs):
+        y[start:end] = polyval(
+                polyfit((x[start - 1], x[end]), (y[start - 1], y[end]), 1),
+                x[start:end])
+    return y
+
 
 def envelope(z, d=0, maxiter=100):
     """
