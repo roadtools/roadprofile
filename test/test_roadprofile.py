@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 import numpy.testing as npt
 
-from roadprofile import _calculate_msd, calculate_mpd, _calc_tpa_core, _create_dropouts_index, _iter_intervals_of_true, iter_intervals, interpolate_dropouts
+from roadprofile import _calc_mpd_core, calculate_mpd, _calc_tpa_core, _create_dropouts_index, _iter_intervals_of_true, iter_intervals_by_length, interpolate_dropouts
 
 class TestCreateDropoutsIndex(unittest.TestCase):
     dropout_criteria = 999
@@ -80,7 +80,7 @@ class TestAlwaysEqualOrStrictlyLargerThanLengthIntervals(unittest.TestCase):
     def _test_interval(self, data_in, test_out=None):
         data_in = np.array(data_in)
         if test_out is None: test_out = [data_in]
-        data_out = [data_in[idx_s:idx_e] for idx_s, idx_e in iter_intervals(data_in, 0.1)]
+        data_out = [data_in[idx_s:idx_e] for idx_s, idx_e in iter_intervals_by_length(data_in, 0.1)]
         npt.assert_array_almost_equal([len(data_out)], [len(test_out)])
         for array_test, array_out in zip(test_out, data_out):
             npt.assert_array_almost_equal(array_test, array_out)
@@ -104,15 +104,15 @@ class TestAlwaysEqualOrStrictlyLargerThanLengthIntervals(unittest.TestCase):
                 )
 
 class TestMPDAlgorithm(unittest.TestCase):
-    def test__calculate_msd_include_50mm_point_in_first_interval(self):
+    def test__calc_mpd_core_include_50mm_point_in_first_interval(self):
         x = np.array([0, 0.025, 0.05, 0.075, 0.1])
         y = np.array([0, 0, 1, 0, 2])
-        npt.assert_almost_equal(1.5, _calculate_msd(x ,y))
+        npt.assert_almost_equal(1.5, _calc_mpd_core(x ,y))
 
-    def test__calculate_msd_include_51mm_point_in_first_interval(self):
+    def test__calc_mpd_core_include_51mm_point_in_first_interval(self):
         x = np.array([0, 0.025, 0.051, 0.075, 0.1])
         y = np.array([0, 0, 1, 0, 2])
-        npt.assert_almost_equal(1, _calculate_msd(x ,y))
+        npt.assert_almost_equal(1, _calc_mpd_core(x ,y))
 
     def test_calculate_mpd_1msd(self):
         x = np.array([0, 0.025, 0.075, 0.1])
