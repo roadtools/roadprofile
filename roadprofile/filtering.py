@@ -1,7 +1,7 @@
 from scipy.signal import butter, lfilter
-from numpy import mean, diff, isnan, polyval, polyfit, where
+from numpy import array, mean, diff, isnan, polyval, polyfit, where
 
-from .utils import _iter_intervals_of_true
+from .utils import _iter_intervals_of_true, _epsilon
 
 mpd_butterworth_order = 2
 
@@ -30,6 +30,30 @@ def _create_dropouts_index(y, dropout_criteria):
         drop_outs = where(y == dropout_criteria)[0]
     return drop_outs
 
+def _handle_startpoints(x, y, drop_outs, truncated):
+    start, end = drop_outs[0,:]
+    if start == 0:
+        if x[end - 1] - x[start] > 5/1000 + _epsilon:
+            y = y[end:]
+            x = x[end:]
+            drop_outs -= (end - start)
+            truncated[0] = end
+        else:
+            y[:end] = y[end]
+        drop_outs = drop_outs[1:,:]
+    return x, y, truncated, drop_outs
+
+def _handle_endpoints(x, y, truncated, start, end):
+    # if there is only one point the left hand side will be 0 thus no truncation.
+    # This makes sense since it is required that the sampling interval is smaller than 5 mm
+    if x[end - 1] - x[start] > 5/1000 + _epsilon: # 5/1000 = 5 mm
+        y = y[:start]
+        x = x[:start]
+        truncated[1] = start
+    else:
+        y[start:] = y[start - 1]
+    return x, y, truncated
+
 def interpolate_dropouts(x, y, dropout_criteria):
     """
     Replaces all invalid values of `y` with linearly interpolated values based on the neighbouring points (see ISO 13473-1 for more information).
@@ -39,14 +63,30 @@ def interpolate_dropouts(x, y, dropout_criteria):
     :param dropout_criteria: Value that defines an invalid measurement in `y`, e.g., `y[n] == dropout_criteria` implies that `y[n]` is invalid.
         Thus, `dropout_criteria` can be *-9999*, *NaN* or any other special value that indicates an invalid measurement.
 
-    *Note* This algorithm does not create a new array but replaces the invalid measurements in `y`.
+    :return: `(y_out, truncated)` where
+
+        * `y_out` Interpolated (and possibly truncated) measurement array.
+        * `truncated` A tuple `(start, end)` containing the end-points from the original array, i.e., such that
+            `len(y[start:end]) == len(y_out)`. If no truncation have been made the value is `(0, len(y))`.
+
+    *Note* This algorithm does not check if each 100mm segment or the entire profile have enough valid data points.
     """
+    y = y.copy()
     drop_outs = _create_dropouts_index(y, dropout_criteria)
-    for start, end in _iter_intervals_of_true(drop_outs):
-        y[start:end] = polyval(
-                polyfit((x[start - 1], x[end]), (y[start - 1], y[end]), 1),
-                x[start:end])
-    return y
+    drop_outs = array(tuple(_iter_intervals_of_true(drop_outs)))
+    truncated = [0, len(x)]
+    x, y, truncated, drop_outs = _handle_startpoints(x, y, drop_outs, truncated)
+    for start, end in drop_outs:
+        try:
+            y[start:end] = polyval(
+                    polyfit((x[start - 1], x[end]), (y[start - 1], y[end]), 1),
+                    x[start:end])
+        except IndexError:
+            if end == len(x):
+                x, y, truncated = _handle_endpoints(x, y, truncated, start, end)
+            else:
+                raise
+    return y, tuple(truncated)
 
 
 def envelope(z, d=0, maxiter=100):

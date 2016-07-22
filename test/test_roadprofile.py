@@ -4,13 +4,33 @@ import numpy.testing as npt
 
 from roadprofile import _calc_mpd_core, calculate_mpd, _calc_tpa_core, _create_dropouts_index, _iter_intervals_of_true, iter_intervals_by_length, interpolate_dropouts
 
-class TestCreateDropoutsIndex(unittest.TestCase):
+class InterpolateDropoutsBaseTests:
     dropout_criteria = 999
 
     def insert_invalids(self, x, y, invalid_intervals):
         for start, end in invalid_intervals:
+            if end > len(y):
+                raise Exception('Interval [{},{}] too long for the test-array'.format(start,end))
             y[start:end] = self.dropout_criteria
 
+
+    def test_single_point(self):
+        self.execute_testprocedure({(2,3)})
+
+    def test_two_single_points_one_point_apart(self):
+        self.execute_testprocedure([(2,3), (4,5)])
+
+    def test_two_consecutive_points(self):
+        self.execute_testprocedure({(2,4)})
+
+    def test_three_consecutive_points(self):
+        self.execute_testprocedure({(2,5)})
+
+    def test_two_consec_and_one_single(self):
+        self.execute_testprocedure({(2,5), (7,8)})
+
+
+class TestCreateDropoutsIndex(unittest.TestCase, InterpolateDropoutsBaseTests):
     def execute_testprocedure(self, invalid_intervals):
         x = np.linspace(1, 10, 10)
         y = np.zeros(x.shape)
@@ -19,41 +39,20 @@ class TestCreateDropoutsIndex(unittest.TestCase):
         for start, end in _iter_intervals_of_true(drop_outs):
             boollist = list(y[start:end] == self.dropout_criteria)
             self.assertListEqual(boollist, [True]*len(boollist))
-
-    def test_single_point(self):
-        self.execute_testprocedure({(2,3)})
-
-    def test_two_single_points_one_point_apart(self):
-        self.execute_testprocedure([
-            (2,3), (4,5)])
-
-    def test_two_consecutive_points(self):
-        self.execute_testprocedure({
-            (2,4)})
-
-    def test_three_consecutive_points(self):
-        self.execute_testprocedure({
-            (2,5)})
-
-    def test_two_consec_and_one_single(self):
-        self.execute_testprocedure({
-            (2,5), (7,8)})
+        self.x = x
+        self.y = y
 
     def test_two_consecutive_beginning(self):
-            self.execute_testprocedure({
-                (0,3)})
+        self.execute_testprocedure({(0,3)})
 
     def test_single_point_beginning(self):
-            self.execute_testprocedure({
-                (0,1)})
+        self.execute_testprocedure({(0,1)})
 
     def test_two_consecutive_end(self):
-            self.execute_testprocedure({
-                (8,10)})
+        self.execute_testprocedure({(8,10)})
 
     def test_single_point_end(self):
-            self.execute_testprocedure({
-                (9,10)})
+        self.execute_testprocedure({(9,10)})
 
 class TestCreateDropoutsIndexHavingNaN(TestCreateDropoutsIndex):
     dropout_criteria = float('Nan')
@@ -66,13 +65,68 @@ class TestCreateDropoutsIndexHavingNaN(TestCreateDropoutsIndex):
         for start, end in _iter_intervals_of_true(drop_outs):
             self.assertTrue(all(np.isnan(y[start:end])))
 
-class TestInterpolateDropouts(TestCreateDropoutsIndex):
+class TestInterpolateDropouts(unittest.TestCase, InterpolateDropoutsBaseTests):
     def execute_testprocedure(self, invalid_intervals):
-        x = np.arange(1, 20)
+        x = np.arange(1, 11)
         y_org = x * 1337 + 1.337
         y = y_org.copy()
         self.insert_invalids(x, y, invalid_intervals)
-        interpolate_dropouts(x, y, self.dropout_criteria)
+        y, _ = interpolate_dropouts(x, y, self.dropout_criteria)
+        npt.assert_almost_equal(y, y_org)
+
+    def wrap_interpolate_dropouts(self, x, invalid_intervals):
+        y_org = x * 1337 + 1.337
+        y = y_org.copy()
+        self.insert_invalids(x, y, invalid_intervals)
+        y, truncated = interpolate_dropouts(x, y, self.dropout_criteria)
+        return y_org, y, x, truncated
+
+    def test_truncate_two_beginning_invalids(self):
+        x = np.arange(1, 11) # This gives a distance of 1m per measurement which should trigger array truncation :)
+        y_org, y, x, trunc = self.wrap_interpolate_dropouts(x, {(0, 3)})
+        npt.assert_array_almost_equal((3, len(y_org)), trunc)
+        npt.assert_almost_equal(y, y_org[3:])
+
+    def test_interpolate_two_beginning_invalids(self):
+        x = np.arange(1, 11) * 1e-3 # Milimeters which should trigger (non-truncating) interpolation
+        y_org, y, x, trunc = self.wrap_interpolate_dropouts(x, {(0, 3)})
+        y_org[:3] = y_org[3]
+        npt.assert_array_almost_equal((0, len(y_org)), trunc)
+        npt.assert_almost_equal(y, y_org)
+
+    def test_interpolate_two_beginning_plus_extra_invalids(self):
+        # Check that proper adjustments will be made for the remaining intervals if truncated at beginning
+        x = np.arange(1, 15)
+        y_org, y, x, trunc = self.wrap_interpolate_dropouts(x, {(0, 3), (5,6), (8,11), (13, 14)})
+        y_org[13] = y_org[12]
+        npt.assert_array_almost_equal((3, len(y_org)), trunc)
+        npt.assert_almost_equal(y, y_org[3:])
+
+    def test_interpolate_first_point(self):
+        x = np.arange(1, 11)
+        y_org, y, x, trunc = self.wrap_interpolate_dropouts(x, {(0, 1)})
+        y_org[0] = y_org[1] # Since there is only one point no truncation will occur.
+        npt.assert_array_almost_equal((0, len(y_org)), trunc)
+        npt.assert_almost_equal(y, y_org)
+
+    def test_truncate_last_two_invalids(self):
+        x = np.arange(1, 11)
+        y_org, y, x, trunc = self.wrap_interpolate_dropouts(x, {(8, 10)})
+        npt.assert_array_almost_equal((0, 8), trunc)
+        npt.assert_almost_equal(y, y_org[:8])
+
+    def test_interpolate_last_two_invalids(self):
+        x = np.arange(1, 11) * 1e-3
+        y_org, y, x, trunc = self.wrap_interpolate_dropouts(x, {(8, 10)})
+        y_org[8:] = y_org[7]
+        npt.assert_array_almost_equal((0, len(y_org)), trunc)
+        npt.assert_almost_equal(y, y_org)
+
+    def test_interpolate_last_point(self):
+        x = np.arange(1, 11)
+        y_org, y, x, trunc = self.wrap_interpolate_dropouts(x, {(9, 10)})
+        y_org[9] = y_org[8]
+        npt.assert_array_almost_equal((0, len(y_org)), trunc)
         npt.assert_almost_equal(y, y_org)
 
 
