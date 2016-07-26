@@ -11,11 +11,11 @@ def mpd_butterworth(x, y):
     return mpd_butterworth_low(y, sampling_rate)
 
 def mpd_butterworth_high(z, sampling_rate):
-    cutoff_freq = 140
+    cutoff_freq = 140/1000 # 140 mm normalized to m
     return butterworth(z, mpd_butterworth_order, cutoff_freq, sampling_rate, 'highpass')
 
 def mpd_butterworth_low(z, sampling_rate):
-    cutoff_freq = 3
+    cutoff_freq = 3/1000 # 3 mm normalized to m
     return butterworth(z, mpd_butterworth_order, cutoff_freq, sampling_rate, 'lowpass') # TODO find  cutoff-freq in ISO standard.
 
 def butterworth(z, order, cutoff_frequency, sampling_rate, btype): # sampling rate in [samples/mm]
