@@ -1,7 +1,7 @@
 from scipy.signal import butter, lfilter
-from numpy import array, mean, diff, isnan, polyval, polyfit, where
+from numpy import array, mean, diff, isnan, polyval, polyfit
 
-from .utils import _iter_intervals_of_true, _epsilon
+from .utils import iter_intervals_by_true, _epsilon
 
 mpd_butterworth_order = 2
 
@@ -23,24 +23,25 @@ def butterworth(z, order, cutoff_frequency, sampling_rate, btype): # sampling ra
     a, b = butter(order, normalized_frequency, btype=btype)
     return lfilter(a, b, z)
 
-def _create_dropouts_index(y, dropout_criteria):
+def _create_dropouts_cond(y, dropout_criteria):
     if isnan(dropout_criteria):
-        drop_outs = where(isnan(y))[0]
+        drop_outs = isnan(y)
     else:
-        drop_outs = where(y == dropout_criteria)[0]
+        drop_outs = y == dropout_criteria
     return drop_outs
 
 def _handle_startpoints(x, y, drop_outs, truncated):
-    start, end = drop_outs[0,:]
-    if start == 0:
-        if x[end - 1] - x[start] > 5/1000 + _epsilon:
-            y = y[end:]
-            x = x[end:]
-            drop_outs -= (end - start)
-            truncated[0] = end
-        else:
-            y[:end] = y[end]
-        drop_outs = drop_outs[1:,:]
+    if len(drop_outs) > 0:
+        start, end = drop_outs[0,:]
+        if start == 0:
+            if x[end - 1] - x[start] > 5/1000 + _epsilon:
+                y = y[end:]
+                x = x[end:]
+                drop_outs -= (end - start)
+                truncated[0] = end
+            else:
+                y[:end] = y[end]
+            drop_outs = drop_outs[1:,:]
     return x, y, truncated, drop_outs
 
 def _handle_endpoints(x, y, truncated, start, end):
@@ -72,8 +73,8 @@ def interpolate_dropouts(x, y, dropout_criteria):
     *Note* This algorithm does not check if each 100mm segment or the entire profile have enough valid data points.
     """
     y = y.copy()
-    drop_outs = _create_dropouts_index(y, dropout_criteria)
-    drop_outs = array(tuple(_iter_intervals_of_true(drop_outs)))
+    drop_outs = _create_dropouts_cond(y, dropout_criteria)
+    drop_outs = array(tuple(iter_intervals_by_true(drop_outs)))
     truncated = [0, len(x)]
     x, y, truncated, drop_outs = _handle_startpoints(x, y, drop_outs, truncated)
     for start, end in drop_outs:

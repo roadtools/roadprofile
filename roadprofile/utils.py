@@ -31,19 +31,19 @@ def iter_intervals_by_length(x, length=0.1):
         if len(x) <= max_idx:
             max_idx = len(x)
 
-def _iter_intervals_of_true(drop_outs):
+def iter_intervals_by_true(cond):
     idx = 0
     count = 0
-    while idx < len(drop_outs):
+    cond_idx = np.where(cond)[0]
+    while idx < len(cond_idx):
         try:
-            consecutive = (drop_outs[idx + 1] - drop_outs[idx]) == 1
+            consecutive = (cond_idx[idx + 1] - cond_idx[idx]) == 1
         except IndexError:
-            yield drop_outs[idx - count], drop_outs[idx] + 1
+            yield cond_idx[idx - count], cond_idx[idx] + 1
             break
         if consecutive:
             count += 1
-            idx += 1
         else:
-            yield drop_outs[idx - count], drop_outs[idx] + 1
-            idx += 1
+            yield cond_idx[idx - count], cond_idx[idx] + 1
             count = 0
+        idx += 1
