@@ -36,5 +36,5 @@ def _calc_tpa_core(xsub, ysub, threshold): # threshold refers to fraction of low
     idx = size - round(size * threshold)
     cutoff_length = y_sorted[idx]
     y_interp -= cutoff_length
-    y_interp[np.where(y_interp < 0)[0]] = 0
+    y_interp[y_interp < 0] = 0
     return np.trapz(y_interp, x_interp)
