@@ -25,11 +25,11 @@ def butterworth(z, order, cutoff_frequency, sampling_rate, btype): # sampling ra
     a, b = butter(order, normalized_frequency, btype=btype)
     return lfilter(a, b, z)
 
-def _create_dropouts_cond(y, dropout_criteria):
-    if np.isnan(dropout_criteria):
+def _create_dropouts_cond(y, criteria):
+    if np.isnan(criteria):
         drop_outs = np.isnan(y)
     else:
-        drop_outs = y == dropout_criteria
+        drop_outs = y == criteria
     return drop_outs
 
 def _find_invalid_endpoint_intervals(y):
@@ -59,14 +59,14 @@ def _handle_endpoints(x, y, cond, truncated):
         cond[start:] = False
     return x, y, truncated, cond
 
-def interpolate_dropouts(x, y, dropout_criteria):
+def interpolate_dropouts(x, y, criteria):
     """
     Replaces all invalid values of `y` with linearly interpolated values based on the neighbouring points (see ISO 13473-1 for more information).
 
     :param x: Longitudinal distance in meters.
     :param y: Vertical displacement in milimeters.
-    :param dropout_criteria: Value that defines an invalid measurement in `y`, e.g., `y[n] == dropout_criteria` implies that `y[n]` is invalid.
-        Thus, `dropout_criteria` can be *-9999*, *NaN* or any other special value that indicates an invalid measurement.
+    :param criteria: Value that defines an invalid measurement in `y`, e.g., `y[n] == criteria` implies that `y[n]` is invalid.
+        Thus, `criteria` can be *-9999*, *NaN* or any other special value that indicates an invalid measurement.
 
     :return: `(y_out, truncated)` where
 
@@ -77,7 +77,10 @@ def interpolate_dropouts(x, y, dropout_criteria):
     *Note* This algorithm does not check if each 100mm segment or the entire profile have enough valid data points.
     """
     y = y.copy()
-    cond = _create_dropouts_cond(y, dropout_criteria)
+    if isinstance(criteria, np.ndarray) and criteria.dtype == np.dtype('bool'):
+        cond = criteria
+    else:
+        cond = _create_dropouts_cond(y, criteria)
     truncated = [0, len(x)]
     if cond[0]:
         x, y, truncated, cond = _handle_startpoints(x, y, cond, truncated)

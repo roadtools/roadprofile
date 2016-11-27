@@ -3,3 +3,5 @@ docs/_build
 docs/_build_latex/
 docs/_build_html/
 vim_*
+*.pyc
+roadprofile.egg-info
