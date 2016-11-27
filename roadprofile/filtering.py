@@ -1,12 +1,14 @@
 from scipy.signal import butter, lfilter
-from numpy import array, mean, diff, isnan, polyval, polyfit
+from scipy.interpolate import interp1d
+import numpy as np
 
-from .utils import iter_intervals_by_true, _epsilon
+from .utils import _epsilon
 
 mpd_butterworth_order = 2
+TRUNCATE_THRESHOLD_MM = 5/1000 + _epsilon # 5/1000 = 5 mm
 
 def mpd_butterworth(x, y):
-    sampling_rate = mean(diff(x))
+    sampling_rate = np.mean(np.diff(x))
     y = mpd_butterworth_high(y, sampling_rate)
     return mpd_butterworth_low(y, sampling_rate)
 
@@ -24,36 +26,38 @@ def butterworth(z, order, cutoff_frequency, sampling_rate, btype): # sampling ra
     return lfilter(a, b, z)
 
 def _create_dropouts_cond(y, dropout_criteria):
-    if isnan(dropout_criteria):
-        drop_outs = isnan(y)
+    if np.isnan(dropout_criteria):
+        drop_outs = np.isnan(y)
     else:
         drop_outs = y == dropout_criteria
     return drop_outs
 
-def _handle_startpoints(x, y, drop_outs, truncated):
-    if len(drop_outs) > 0:
-        start, end = drop_outs[0,:]
-        if start == 0:
-            if x[end - 1] - x[start] > 5/1000 + _epsilon:
-                y = y[end:]
-                x = x[end:]
-                drop_outs -= (end - start)
-                truncated[0] = end
-            else:
-                y[:end] = y[end]
-            drop_outs = drop_outs[1:,:]
-    return x, y, truncated, drop_outs
+def _find_invalid_endpoint_intervals(y):
+    for n, val in enumerate(y):
+        if val: continue
+        else: return n
 
-def _handle_endpoints(x, y, truncated, start, end):
+def _handle_startpoints(x, y, cond, truncated):
+    end = _find_invalid_endpoint_intervals(cond)
+    if x[end - 1] - x[0] > TRUNCATE_THRESHOLD_MM:
+        x, y, cond = x[end:], y[end:], cond[end:]
+        truncated[0] = end
+    else:
+        y[:end] = y[end]
+        cond[:end] = False
+    return x, y, truncated, cond
+
+def _handle_endpoints(x, y, cond, truncated):
     # if there is only one point the left hand side will be 0 thus no truncation.
     # This makes sense since it is required that the sampling interval is smaller than 5 mm
-    if x[end - 1] - x[start] > 5/1000 + _epsilon: # 5/1000 = 5 mm
-        y = y[:start]
-        x = x[:start]
-        truncated[1] = start
+    start = - _find_invalid_endpoint_intervals(reversed(cond))
+    if x[-1] - x[start] > TRUNCATE_THRESHOLD_MM:
+        x, y, cond = x[:start], y[:start], cond[:start]
+        truncated[1] = truncated[1] + start
     else:
         y[start:] = y[start - 1]
-    return x, y, truncated
+        cond[start:] = False
+    return x, y, truncated, cond
 
 def interpolate_dropouts(x, y, dropout_criteria):
     """
@@ -73,20 +77,15 @@ def interpolate_dropouts(x, y, dropout_criteria):
     *Note* This algorithm does not check if each 100mm segment or the entire profile have enough valid data points.
     """
     y = y.copy()
-    drop_outs = _create_dropouts_cond(y, dropout_criteria)
-    drop_outs = array(tuple(iter_intervals_by_true(drop_outs)))
+    cond = _create_dropouts_cond(y, dropout_criteria)
     truncated = [0, len(x)]
-    x, y, truncated, drop_outs = _handle_startpoints(x, y, drop_outs, truncated)
-    for start, end in drop_outs:
-        try:
-            y[start:end] = polyval(
-                    polyfit((x[start - 1], x[end]), (y[start - 1], y[end]), 1),
-                    x[start:end])
-        except IndexError:
-            if end == len(x):
-                x, y, truncated = _handle_endpoints(x, y, truncated, start, end)
-            else:
-                raise
+    if cond[0]:
+        x, y, truncated, cond = _handle_startpoints(x, y, cond, truncated)
+    if cond[-1]:
+        x, y, truncated, cond = _handle_endpoints(x, y, cond, truncated)
+    negcond = np.logical_not(cond)
+    f = interp1d(x[negcond], y[negcond], kind='linear', copy=False)
+    y[cond] = f(x[cond])
     return y, tuple(truncated)
 
 
