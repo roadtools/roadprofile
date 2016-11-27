@@ -3,6 +3,7 @@ import numpy as np
 import numpy.testing as npt
 
 from roadprofile import _calc_mpd_core, calculate_mpd, _calc_tpa_core, _create_dropouts_cond, iter_intervals_by_true, iter_intervals_by_length, interpolate_dropouts
+from roadprofile.gps import circum_circle_radius
 
 class InterpolateDropoutsBaseTests:
     dropout_criteria = 999
@@ -228,6 +229,25 @@ class TestTPACoreAlgorithm(unittest.TestCase):
         y = np.zeros(self.y.shape)
         for threshold in self.thresholds:
             npt.assert_almost_equal(_calc_tpa_core(self.x, y, threshold), 0, decimal=2)
+
+class TestGPS(unittest.TestCase):
+    def test_curvature(self):
+        from math import pi as PI
+        from numpy import cos, sin
+        from scipy.spatial.distance import euclidean
+        import numpy.testing as npt
+
+        def dists_euclidiean(d1, d2):
+            return [euclidean(p1, p2) for p1, p2 in zip(d1, d2)]
+
+        radians = np.arange(0, 2*PI, 0.2)
+        xs = [cos(n) for n in radians]
+        ys = [sin(n) for n in radians]
+        points = list(zip(xs, ys))
+        ab = np.array(dists_euclidiean(points[:-1], points[1:]))
+        c = np.array(dists_euclidiean(points[:-2], points[2:]))
+        output = circum_circle_radius(ab[:-1], ab[1:], c)
+        npt.assert_array_almost_equal(output, np.ones(output.shape))
 
 if __name__ == '__main__':
     unittest.main()
