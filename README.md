@@ -8,6 +8,6 @@ This package contains various routines for working with texture profiles. Exampl
 * Drop-out interpolation
 * Profile statistics overview
 
-See the documentation for more information: http://roadprofile.miriam-co2.net.
+See the documentation for more information: ~~http://roadprofile.miriam-co2.net.~~
 
 **This is still work in progress!**
